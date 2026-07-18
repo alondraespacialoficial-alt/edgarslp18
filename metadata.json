@@ -1,0 +1,6 @@
+{
+  "name": "Charlitron Despacho Inteligente",
+  "description": "Sistema de recepción de asuntos legales, organización de evidencia y análisis preliminar automático para abogados y clientes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
