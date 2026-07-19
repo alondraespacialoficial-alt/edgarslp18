@@ -14,6 +14,8 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [passwordError, setPasswordError] = useState<string>('');
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState<boolean>(false);
+  const [adminPassword, setAdminPassword] = useState<string>('');
   
   const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -53,16 +55,29 @@ export default function App() {
     }
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput === '2003') {
-      setIsAdminUnlocked(true);
-      setRole('admin');
-      setShowPasswordPrompt(false);
-      setPasswordInput('');
-      setPasswordError('');
-    } else {
-      setPasswordError('Contraseña incorrecta. Intente de nuevo.');
+    setIsVerifyingPassword(true);
+    setPasswordError('');
+    try {
+      // Validate against the real ADMIN_PASSWORD configured server-side (.env)
+      const res = await fetch('/api/supabase-diagnostics', {
+        headers: { 'x-admin-password': passwordInput }
+      });
+      if (res.ok) {
+        setAdminPassword(passwordInput);
+        setIsAdminUnlocked(true);
+        setRole('admin');
+        setShowPasswordPrompt(false);
+        setPasswordInput('');
+        setPasswordError('');
+      } else {
+        setPasswordError('Contraseña incorrecta. Intente de nuevo.');
+      }
+    } catch (err) {
+      setPasswordError('No se pudo verificar la contraseña. Revisa tu conexión.');
+    } finally {
+      setIsVerifyingPassword(false);
     }
   };
 
@@ -165,7 +180,7 @@ export default function App() {
               transition={{ duration: 0.15 }}
               className="w-full"
             >
-              <AdminDashboard adminPassword="2003" />
+              <AdminDashboard adminPassword={adminPassword} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -225,9 +240,10 @@ export default function App() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
+                    disabled={isVerifyingPassword}
+                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-xs rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
                   >
-                    Acceder
+                    {isVerifyingPassword ? 'Verificando...' : 'Acceder'}
                   </button>
                 </div>
               </form>
