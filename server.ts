@@ -134,9 +134,9 @@ async function ensureStorageBucket(sb: any) {
 }
 
 // Sync local cases cache with Supabase if online
-async function syncCasesToSupabase(localCases: any[]) {
+async function syncCasesToSupabase(localCases: any[]): Promise<{ ok: boolean; error?: string }> {
   const sb = getSupabaseClient();
-  if (!sb) return;
+  if (!sb) return { ok: false, error: 'Supabase no está configurado.' };
   
   try {
     const cleanedCases = sanitizeNullBytes(localCases);
@@ -173,13 +173,16 @@ async function syncCasesToSupabase(localCases: any[]) {
     if (error) {
       supabaseLastError = `Upsert Error: ${error.message} (Code: ${error.code})`;
       console.warn('Supabase sync warning (table "cases" might not exist or need RLS adjustments):', error.message);
+      return { ok: false, error: supabaseLastError };
     } else {
       supabaseLastError = null; // Clear error on success!
       console.log(`Successfully synchronized ${mapped.length} cases to Supabase!`);
+      return { ok: true };
     }
   } catch (err: any) {
     supabaseLastError = `Sync Exception: ${err.message}`;
     console.error('Supabase sync failed:', err.message);
+    return { ok: false, error: supabaseLastError };
   }
 }
 
@@ -903,7 +906,15 @@ app.post('/api/cases/:folio/update', adminAuth, async (req, res) => {
 
     cases[caseIndex] = item;
     await fs.writeFile(DB_FILE, JSON.stringify(cases, null, 2), 'utf-8');
-    await syncCasesToSupabase(cases);
+    const syncResult = await syncCasesToSupabase(cases);
+    if (!syncResult.ok) {
+      // The change was saved locally, but the client-facing lookup reads fresh data
+      // from Supabase first, so it won't see this update until the sync issue is fixed.
+      return res.json({
+        ...item,
+        _syncWarning: `Los cambios se guardaron, pero no se pudieron sincronizar con la base de datos en la nube (${syncResult.error || 'error desconocido'}). El cliente podría seguir viendo el estatus anterior hasta que se corrija la sincronización.`
+      });
+    }
     res.json(item);
   } catch (error: any) {
     res.status(500).json({ error: 'Error al actualizar expediente: ' + error.message });

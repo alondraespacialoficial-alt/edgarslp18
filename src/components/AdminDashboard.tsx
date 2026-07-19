@@ -240,7 +240,11 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
         setSelectedCase(updated);
         // Refresh local cases array
         setCases(prev => prev.map(c => c.folio === updated.folio ? updated : c));
-        alert('Cambios guardados con éxito en el expediente.');
+        if (updated._syncWarning) {
+          alert(`⚠️ Atención: ${updated._syncWarning}`);
+        } else {
+          alert('Cambios guardados con éxito en el expediente.');
+        }
       }
     } catch (err) {
       console.error(err);
