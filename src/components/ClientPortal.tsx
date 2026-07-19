@@ -318,11 +318,11 @@ export default function ClientPortal() {
         {heroImageUrl && (
           <>
             <div
-              className="absolute inset-0 bg-cover bg-center opacity-[0.08]"
+              className="absolute inset-0 bg-cover bg-center opacity-[0.12]"
               style={{ backgroundImage: `url(${heroImageUrl})` }}
               aria-hidden="true"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/80 to-white" aria-hidden="true" />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-white/70 to-white" aria-hidden="true" />
           </>
         )}
         <div className="relative z-10 py-2">
