@@ -3,7 +3,7 @@ import {
   FileText, Upload, Copy, Check, Search, Calendar, AlertTriangle, 
   User, Mail, Phone, MessageSquare, Clipboard, Eye, EyeOff, ArrowRight,
   ShieldCheck, CheckCircle2, ChevronRight, RefreshCw, Sparkles, Printer, Download,
-  Scale, ShieldAlert, BookOpen, ExternalLink, Lock
+  Scale, ShieldAlert, BookOpen, ExternalLink, Lock, LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Case, CaseStatus, Attachment, ClarificationRequest } from '../types';
@@ -234,6 +234,13 @@ export default function ClientPortal() {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const handleLogout = () => {
+    setSearchedCase(null);
+    setSearchFolio('');
+    setSearchPin('');
+    setSearchError('');
   };
 
   const handleClarificationReply = async (reqId: string) => {
@@ -867,9 +874,19 @@ export default function ClientPortal() {
                     <h2 className="font-mono font-bold text-lg text-slate-800 mt-0.5">{searchedCase.folio}</h2>
                     <p className="text-xs text-slate-500 mt-1">Presentado por: <span className="font-semibold text-slate-700">{searchedCase.clientName}</span></p>
                   </div>
-                  <div className="flex flex-col items-end gap-1 text-right">
-                    <span className="text-[10px] text-slate-400 font-semibold">ESTATUS ACTUAL</span>
-                    {getStatusBadge(searchedCase.status)}
+                  <div className="flex flex-col sm:items-end items-start gap-3">
+                    <div className="flex flex-col items-start sm:items-end gap-1 text-left sm:text-right">
+                      <span className="text-[10px] text-slate-400 font-semibold">ESTATUS ACTUAL</span>
+                      {getStatusBadge(searchedCase.status)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Cerrar sesión
+                    </button>
                   </div>
                 </div>
 
