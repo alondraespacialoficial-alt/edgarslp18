@@ -1375,32 +1375,55 @@ export default function ClientPortal() {
 
               {/* Content */}
               <div className="flex-1 overflow-auto p-4 bg-slate-100 flex items-center justify-center min-h-[300px]">
-                {previewFile.type.startsWith('image/') || previewFile.content.startsWith('data:image/') ? (
-                  <img 
-                    src={previewFile.content} 
-                    alt={previewFile.name}
-                    className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-sm"
-                  />
-                ) : previewFile.type === 'application/pdf' || previewFile.content.startsWith('data:application/pdf') ? (
-                  <iframe 
-                    src={previewFile.content} 
-                    title={previewFile.name}
-                    className="w-full h-[60vh] rounded-lg border border-slate-200 bg-white"
-                  />
-                ) : (
-                  <div className="w-full h-full max-h-[60vh] overflow-auto bg-slate-900 rounded-xl p-4 border border-slate-800 text-left font-mono">
-                    <pre className="text-xs text-emerald-400 whitespace-pre-wrap leading-relaxed select-all">
-                      {previewFile.content}
-                    </pre>
-                  </div>
-                )}
+                {(() => {
+                  const src = previewFile.url || previewFile.content || '';
+                  const isImage = previewFile.type?.startsWith('image/') || src.startsWith('data:image/');
+                  const isPdf = previewFile.type === 'application/pdf' || src.startsWith('data:application/pdf');
+
+                  if (isImage) {
+                    return (
+                      <img
+                        src={src}
+                        alt={previewFile.name}
+                        className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-sm"
+                      />
+                    );
+                  }
+                  if (isPdf) {
+                    return (
+                      <iframe
+                        src={src}
+                        title={previewFile.name}
+                        className="w-full h-[60vh] rounded-lg border border-slate-200 bg-white"
+                      />
+                    );
+                  }
+                  if (previewFile.content) {
+                    return (
+                      <div className="w-full h-full max-h-[60vh] overflow-auto bg-slate-900 rounded-xl p-4 border border-slate-800 text-left font-mono">
+                        <pre className="text-xs text-emerald-400 whitespace-pre-wrap leading-relaxed select-all">
+                          {previewFile.content}
+                        </pre>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="text-center text-slate-500 text-sm px-6">
+                      <FileText className="w-10 h-10 mx-auto mb-2 text-slate-400" />
+                      Vista previa no disponible para este tipo de archivo.<br />
+                      Usa el botón "Descargar Archivo" para verlo.
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Footer */}
               <div className="p-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
                 <a 
-                  href={previewFile.content} 
+                  href={previewFile.url || previewFile.content} 
                   download={previewFile.name}
+                  target={previewFile.url ? '_blank' : undefined}
+                  rel={previewFile.url ? 'noopener noreferrer' : undefined}
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <Download className="w-3.5 h-3.5" /> Descargar Archivo

@@ -4,7 +4,8 @@ export interface Attachment {
   name: string;
   size?: string;
   type: string; // e.g. "application/pdf", "image/png", "text/plain"
-  content: string; // Base64 or plain text if txt
+  content?: string; // Base64 or plain text if txt (legacy inline storage)
+  url?: string; // Public URL if stored in Supabase Storage
 }
 
 export interface TimelineEntry {
