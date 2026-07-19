@@ -11,7 +11,9 @@ dotenv.config();
 
 const app = express();
 const PORT = 3000;
-const DB_FILE = path.join(process.cwd(), 'cases.json');
+// On Vercel, the filesystem is read-only except /tmp, and it's not persisted across invocations.
+// The local JSON file is only a cache/fallback; Supabase remains the source of truth in production.
+const DB_FILE = path.join(process.env.VERCEL ? '/tmp' : process.cwd(), 'cases.json');
 
 // Middlewares
 app.use(express.json({ limit: '50mb' }));
@@ -1252,4 +1254,13 @@ async function startServer() {
   });
 }
 
-startServer();
+if (process.env.VERCEL) {
+  // On Vercel, the frontend is built and served separately as static files by the platform.
+  // This module is only imported as a Serverless Function to handle /api/* routes,
+  // so we must NOT call app.listen() or set up Vite/static middleware here.
+} else {
+  startServer();
+}
+
+export default app;
+
