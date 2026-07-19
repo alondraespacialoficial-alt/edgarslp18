@@ -318,14 +318,14 @@ export default function ClientPortal() {
         {heroImageUrl && (
           <>
             <div
-              className="absolute inset-0 bg-cover bg-center opacity-[0.12]"
+              className="absolute inset-0 bg-cover bg-center opacity-[0.20]"
               style={{ backgroundImage: `url(${heroImageUrl})` }}
               aria-hidden="true"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-white/70 to-white" aria-hidden="true" />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/45 to-white/95" aria-hidden="true" />
           </>
         )}
-        <div className="relative z-10 py-2">
+        <div className="relative z-10 py-6">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-semibold mb-3">
           <Scale className="w-3.5 h-3.5" /> Recepción Jurídica Digital
         </div>
