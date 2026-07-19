@@ -4,8 +4,10 @@ import fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
-import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
+// NOTE: 'vite' is intentionally NOT statically imported here. It's a heavy build-time
+// tool that must never be loaded inside the Vercel Serverless Function (it breaks cold
+// starts there). It's only required dynamically, below, when running the local dev server.
 
 dotenv.config();
 
@@ -1236,6 +1238,7 @@ async function startServer() {
   await ensureDatabase();
 
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
