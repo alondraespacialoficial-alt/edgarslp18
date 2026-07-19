@@ -170,34 +170,79 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
     }
   };
 
-  const handleHeroImageSelected = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const content = event.target?.result as string;
-      if (!content) return;
-      setIsUploadingHeroImage(true);
-      try {
-        const res = await fetch('/api/settings/hero-image', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-admin-password': adminPassword
-          },
-          body: JSON.stringify({ name: file.name, type: file.type, content })
-        });
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || 'Error al subir la imagen.');
-        }
-        const data = await res.json();
-        setHeroImageUrl(data.url);
-      } catch (err: any) {
-        alert(err.message || 'Error al subir la imagen de portada.');
-      } finally {
-        setIsUploadingHeroImage(false);
+  // Resize + recompress an image client-side before uploading, so large phone
+  // photos don't hit the server/platform request size limit (Vercel caps ~4.5MB).
+  const resizeImageForUpload = (file: File, maxDimension = 1920, quality = 0.82): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('El archivo seleccionado no es una imagen válida.'));
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDimension || height > maxDimension) {
+            if (width >= height) {
+              height = Math.round((height / width) * maxDimension);
+              width = maxDimension;
+            } else {
+              width = Math.round((width / height) * maxDimension);
+              height = maxDimension;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('No se pudo procesar la imagen.'));
+            return;
+          }
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Safely parse an API error response, since platform-level errors (e.g. 413
+  // Payload Too Large from the hosting provider) return plain text, not JSON.
+  const parseApiError = async (res: Response, fallback: string): Promise<string> => {
+    try {
+      const data = await res.clone().json();
+      return data.error || fallback;
+    } catch {
+      if (res.status === 413) return 'La imagen es demasiado pesada para subirse. Intenta con una más ligera.';
+      return `${fallback} (código ${res.status})`;
+    }
+  };
+
+  const handleHeroImageSelected = async (file: File) => {
+    setIsUploadingHeroImage(true);
+    try {
+      const content = await resizeImageForUpload(file);
+      const res = await fetch('/api/settings/hero-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': adminPassword
+        },
+        body: JSON.stringify({ name: file.name, type: 'image/jpeg', content })
+      });
+      if (!res.ok) {
+        throw new Error(await parseApiError(res, 'Error al subir la imagen.'));
       }
-    };
-    reader.readAsDataURL(file);
+      const data = await res.json();
+      setHeroImageUrl(data.url);
+    } catch (err: any) {
+      alert(err.message || 'Error al subir la imagen de portada.');
+    } finally {
+      setIsUploadingHeroImage(false);
+    }
   };
 
   const handleRemoveHeroImage = async () => {
