@@ -1081,6 +1081,25 @@ export default function ClientPortal() {
         )}
       </AnimatePresence>
 
+      {/* Footer con enlaces legales */}
+      <div className="mt-10 pt-6 border-t border-slate-200 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] text-slate-500">
+        <button
+          type="button"
+          onClick={() => setShowPrivacyModal(true)}
+          className="font-semibold hover:text-indigo-600 hover:underline cursor-pointer"
+        >
+          Aviso de Privacidad
+        </button>
+        <span className="text-slate-300">•</span>
+        <button
+          type="button"
+          onClick={() => setShowTermsModal(true)}
+          className="font-semibold hover:text-indigo-600 hover:underline cursor-pointer"
+        >
+          Términos y Condiciones
+        </button>
+      </div>
+
       {/* Modal de Términos y Condiciones */}
       <AnimatePresence>
         {showTermsModal && (
@@ -1113,7 +1132,7 @@ export default function ClientPortal() {
               
               <div className="space-y-4 text-xs text-slate-600 leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
                 <p className="font-semibold text-slate-800">
-                  Bienvenido a la prueba piloto de Despacho Inteligente. Lea atentamente los siguientes términos:
+                  Bienvenido a Despacho Inteligente. Lea atentamente los siguientes términos:
                 </p>
                 <div>
                   <h4 className="font-bold text-slate-800 mb-1">1. Recepción y Análisis Preliminar</h4>

@@ -137,9 +137,9 @@ export default function App() {
               </button>
             </div>
           ) : (
-            // Discrete space holder or subtle branding
+            // Discrete space holder
             <div className="text-xs text-slate-500 italic hidden sm:block">
-              Prueba Piloto Oficial
+              &nbsp;
             </div>
           )}
 
