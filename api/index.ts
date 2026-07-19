@@ -1,4 +1,4 @@
-import app from '../server';
+import app from '../server.js';
 
 // Vercel Serverless Function entrypoint.
 // All /api/* requests are rewritten here (see vercel.json) and handled
