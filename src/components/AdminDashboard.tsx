@@ -3,7 +3,7 @@ import {
   FileText, Search, ShieldAlert, Sparkles, Filter, Check, Save,
   AlertTriangle, MessageSquare, Send, BookOpen, Clock, Users,
   CheckCircle2, RefreshCw, Layers, ExternalLink, Mail, Phone, Calendar,
-  Edit2, Plus, Info, MessageCircle, AlertCircle, Trash2, Download, Copy, Printer, Eye
+  Edit2, Plus, Info, MessageCircle, AlertCircle, Trash2, Download, Copy, Printer, Eye, EyeOff, Lock
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, 
@@ -37,6 +37,8 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
   const [isDeleting, setIsDeleting] = useState(false);
   const [caseToDelete, setCaseToDelete] = useState<Case | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showCasePin, setShowCasePin] = useState(false);
+  const [pinCopied, setPinCopied] = useState(false);
 
   // Supreme Admin Role & Access System
   const [adminRole, setAdminRole] = useState<'lawyer' | 'supreme'>('lawyer');
@@ -180,6 +182,8 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
       setEditStrategy(selectedCase.customStrategy || selectedCase.aiAnalysis?.suggestedStrategy || '');
       setEditResponseDraft(selectedCase.customResponseDraft || selectedCase.aiAnalysis?.suggestedResponseDraft || '');
       setChatHistory(selectedCase.chatHistory || []);
+      setShowCasePin(false);
+      setPinCopied(false);
     }
   }, [selectedCase]);
 
@@ -972,6 +976,32 @@ REPORTE GENERADO AUTOMÁTICAMENTE PARA REVISIÓN DEL LIC. EDGAR.
                     <span className="font-mono font-bold text-sm text-indigo-700">{selectedCase.folio}</span>
                     <span className={`px-2 py-0.5 border text-[9px] font-bold rounded ${getRiskBadgeColor(selectedCase.aiAnalysis?.riskLevel || 'Medio')}`}>
                       RIESGO {selectedCase.aiAnalysis?.riskLevel?.toUpperCase() || 'MEDIO'}
+                    </span>
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-800 text-[9px] font-bold rounded" title="Clave de acceso privada del cliente para consultar este expediente">
+                      <Lock className="w-2.5 h-2.5" />
+                      PIN: <span className="font-mono tracking-widest">{showCasePin ? (selectedCase.accessPin || '----') : '••••'}</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCasePin(v => !v)}
+                        className="hover:text-amber-950 cursor-pointer"
+                        title={showCasePin ? 'Ocultar PIN' : 'Mostrar PIN'}
+                      >
+                        {showCasePin ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedCase.accessPin) {
+                            navigator.clipboard.writeText(selectedCase.accessPin);
+                            setPinCopied(true);
+                            setTimeout(() => setPinCopied(false), 1500);
+                          }
+                        }}
+                        className="hover:text-amber-950 cursor-pointer"
+                        title="Copiar PIN"
+                      >
+                        {pinCopied ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5" />}
+                      </button>
                     </span>
                   </div>
                   <h2 className="text-sm font-bold text-slate-800 mt-1">{selectedCase.clientName}</h2>

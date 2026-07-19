@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   FileText, Upload, Copy, Check, Search, Calendar, AlertTriangle, 
-  User, Mail, Phone, MessageSquare, Clipboard, Eye, ArrowRight,
+  User, Mail, Phone, MessageSquare, Clipboard, Eye, EyeOff, ArrowRight,
   ShieldCheck, CheckCircle2, ChevronRight, RefreshCw, Sparkles, Printer, Download,
   Scale, ShieldAlert, BookOpen, ExternalLink, Lock
 } from 'lucide-react';
@@ -15,6 +15,9 @@ export default function ClientPortal() {
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientPin, setClientPin] = useState('');
+  const [clientPinConfirm, setClientPinConfirm] = useState('');
+  const [showClientPin, setShowClientPin] = useState(false);
   const [description, setDescription] = useState('');
   const [pastedEvidence, setPastedEvidence] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -155,6 +158,14 @@ export default function ClientPortal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName || !clientEmail || !description) return;
+    if (clientPin.trim().length < 4) {
+      alert('Tu contraseña de acceso debe tener al menos 4 caracteres.');
+      return;
+    }
+    if (clientPin.trim() !== clientPinConfirm.trim()) {
+      alert('Las contraseñas no coinciden. Verifícalas e intenta de nuevo.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -167,7 +178,8 @@ export default function ClientPortal() {
           clientPhone,
           description,
           pastedEvidence,
-          attachments
+          attachments,
+          clientPin: clientPin.trim()
         })
       });
 
@@ -180,6 +192,8 @@ export default function ClientPortal() {
       setClientName('');
       setClientEmail('');
       setClientPhone('');
+      setClientPin('');
+      setClientPinConfirm('');
       setDescription('');
       setPastedEvidence('');
       setAttachments([]);
@@ -447,11 +461,11 @@ export default function ClientPortal() {
                     </div>
                     <div>
                       <p className="text-rose-600 text-xs font-bold flex items-center gap-1">
-                        <Lock className="w-3.5 h-3.5 text-rose-500 shrink-0" /> CLAVE DE ACCESO PRIVADA (PIN)
+                        <Lock className="w-3.5 h-3.5 text-rose-500 shrink-0" /> TU CONTRASEÑA DE ACCESO (PIN)
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="font-mono font-bold text-rose-700 text-lg tracking-widest">{createdCase.accessPin || 'N/A'}</span>
-                        <span className="text-[10px] text-rose-500 font-medium print:hidden">(Úsala para consultar tu estatus)</span>
+                        <span className="text-[10px] text-rose-500 font-medium print:hidden">(La que creaste • úsala junto al folio para consultar tu estatus)</span>
                       </div>
                     </div>
                     <div>
@@ -580,6 +594,57 @@ export default function ClientPortal() {
                   </div>
                 </div>
 
+                {/* Client-created private access password (PIN) */}
+                <div className="mb-6 p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl">
+                  <h3 className="text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-indigo-500" /> Crea tu Contraseña de Acceso al Expediente *
+                  </h3>
+                  <p className="text-[10px] text-slate-500 mb-3">
+                    Esta contraseña quedará ligada a tu número de folio. La usarás junto con tu folio para consultar el estatus de tu asunto, así que elige una que puedas recordar.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">Crear Contraseña *</label>
+                      <div className="relative">
+                        <input
+                          type={showClientPin ? 'text' : 'password'}
+                          required
+                          minLength={4}
+                          maxLength={20}
+                          value={clientPin}
+                          onChange={e => setClientPin(e.target.value)}
+                          placeholder="Mínimo 4 caracteres"
+                          className="w-full text-sm px-3.5 py-2 pr-10 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowClientPin(v => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          title={showClientPin ? 'Ocultar' : 'Mostrar'}
+                        >
+                          {showClientPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">Confirmar Contraseña *</label>
+                      <input
+                        type={showClientPin ? 'text' : 'password'}
+                        required
+                        minLength={4}
+                        maxLength={20}
+                        value={clientPinConfirm}
+                        onChange={e => setClientPinConfirm(e.target.value)}
+                        placeholder="Repite tu contraseña"
+                        className="w-full text-sm px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all font-mono"
+                      />
+                      {clientPinConfirm && clientPin !== clientPinConfirm && (
+                        <p className="text-[10px] text-rose-500 font-semibold mt-1">Las contraseñas no coinciden.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Main Problem Description */}
                 <div className="mb-6">
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
@@ -704,7 +769,7 @@ export default function ClientPortal() {
                 <div className="flex flex-col items-center gap-3">
                   <button
                     type="submit"
-                    disabled={isSubmitting || !clientName || !clientEmail || !description || !acceptedTerms}
+                    disabled={isSubmitting || !clientName || !clientEmail || !description || !acceptedTerms || clientPin.trim().length < 4 || clientPin.trim() !== clientPinConfirm.trim()}
                     className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow cursor-pointer"
                   >
                     {isSubmitting ? (

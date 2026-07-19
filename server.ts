@@ -27,6 +27,31 @@ let supabaseLastError: string | null = null;
 let lastUsedUrl: string | null = null;
 let lastUsedKey: string | null = null;
 
+// Simple in-memory rate limiter to slow down brute-force guessing of the 4-digit case PIN.
+// Not distributed-safe across serverless instances, but adds meaningful friction per warm instance.
+const MAX_PIN_ATTEMPTS = 5;
+const PIN_LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
+const pinAttempts = new Map<string, { count: number; lockedUntil: number }>();
+
+function isFolioPinLocked(folio: string): boolean {
+  const entry = pinAttempts.get(folio);
+  if (!entry) return false;
+  if (entry.lockedUntil && Date.now() < entry.lockedUntil) return true;
+  if (entry.lockedUntil && Date.now() >= entry.lockedUntil) pinAttempts.delete(folio);
+  return false;
+}
+
+function registerFailedPinAttempt(folio: string) {
+  const entry = pinAttempts.get(folio) || { count: 0, lockedUntil: 0 };
+  entry.count += 1;
+  if (entry.count >= MAX_PIN_ATTEMPTS) entry.lockedUntil = Date.now() + PIN_LOCKOUT_MS;
+  pinAttempts.set(folio, entry);
+}
+
+function clearPinAttempts(folio: string) {
+  pinAttempts.delete(folio);
+}
+
 function getSupabaseClient() {
   let sbUrl = process.env.SB_URL;
   const sbKey = process.env.SB_SERVICE_ROLE_KEY || process.env.SB_ANON_KEY;
@@ -473,6 +498,8 @@ app.get('/api/cases/:folio', async (req, res) => {
       return res.status(404).json({ error: 'Expediente no encontrado.' });
     }
 
+    const folioKey = req.params.folio.toUpperCase();
+
     // Authenticate: Must match accessPin OR expected admin password
     const pinHeader = req.headers['x-case-pin'];
     const pinQuery = req.query.pin;
@@ -482,11 +509,18 @@ app.get('/api/cases/:folio', async (req, res) => {
     const expectedAdminPassword = process.env.ADMIN_PASSWORD || '2003';
     const isAuthorizedAdmin = adminHeader === expectedAdminPassword || adminHeader === `Bearer ${expectedAdminPassword}`;
 
+    if (!isAuthorizedAdmin && isFolioPinLocked(folioKey)) {
+      return res.status(429).json({ error: 'Demasiados intentos fallidos con este folio. Intenta de nuevo en unos minutos o contacta al despacho.' });
+    }
+
     const isAuthorizedClient = clientPin && caseItem.accessPin && String(caseItem.accessPin).trim() === clientPin;
 
     if (!isAuthorizedAdmin && !isAuthorizedClient) {
+      registerFailedPinAttempt(folioKey);
       return res.status(401).json({ error: 'No autorizado. La clave de acceso del expediente es incorrecta o no fue proporcionada.' });
     }
+
+    if (!isAuthorizedAdmin) clearPinAttempts(folioKey);
 
     res.json(caseItem);
   } catch (error: any) {
@@ -497,10 +531,15 @@ app.get('/api/cases/:folio', async (req, res) => {
 // POST /api/cases - Create new case and trigger Gemini analysis
 app.post('/api/cases', async (req, res) => {
   try {
-    const { clientName, clientEmail, clientPhone, description, pastedEvidence, attachments } = req.body;
+    const { clientName, clientEmail, clientPhone, description, pastedEvidence, attachments, clientPin } = req.body;
 
     if (!clientName || !clientEmail || !description) {
       return res.status(400).json({ error: 'Nombre, Email y Descripción son obligatorios.' });
+    }
+
+    const trimmedPin = (clientPin || '').toString().trim();
+    if (trimmedPin.length < 4 || trimmedPin.length > 20) {
+      return res.status(400).json({ error: 'Debes crear una contraseña de acceso de entre 4 y 20 caracteres para tu expediente.' });
     }
 
     await ensureDatabase();
@@ -575,8 +614,8 @@ app.post('/api/cases', async (req, res) => {
       }
     }
 
-    // Generate a secure 4-digit PIN for private case access
-    const accessPin = String(Math.floor(1000 + Math.random() * 9000));
+    // Use the private access password the client created themselves for this case
+    const accessPin = trimmedPin;
 
     const newCase: any = {
       folio,
@@ -973,6 +1012,7 @@ app.post('/api/cases/:folio/attachments', async (req, res) => {
     }
 
     const item = cases[caseIndex];
+    const folioKey = req.params.folio.toUpperCase();
 
     // Authenticate: Must match accessPin OR expected admin password
     const pinHeader = req.headers['x-case-pin'];
@@ -983,11 +1023,18 @@ app.post('/api/cases/:folio/attachments', async (req, res) => {
     const expectedAdminPassword = process.env.ADMIN_PASSWORD || '2003';
     const isAuthorizedAdmin = adminHeader === expectedAdminPassword || adminHeader === `Bearer ${expectedAdminPassword}`;
 
+    if (!isAuthorizedAdmin && isFolioPinLocked(folioKey)) {
+      return res.status(429).json({ error: 'Demasiados intentos fallidos con este folio. Intenta de nuevo en unos minutos o contacta al despacho.' });
+    }
+
     const isAuthorizedClient = clientPin && item.accessPin && String(item.accessPin).trim() === clientPin;
 
     if (!isAuthorizedAdmin && !isAuthorizedClient) {
+      registerFailedPinAttempt(folioKey);
       return res.status(401).json({ error: 'No autorizado. La clave de acceso del expediente es incorrecta o no fue proporcionada.' });
     }
+
+    if (!isAuthorizedAdmin) clearPinAttempts(folioKey);
 
     if (!item.attachments) item.attachments = [];
 
@@ -1089,6 +1136,7 @@ app.post('/api/cases/:folio/clarification', async (req, res) => {
     }
 
     const item = cases[caseIndex];
+    const folioKey = req.params.folio.toUpperCase();
 
     // Authenticate: Must match accessPin OR expected admin password
     const pinHeader = req.headers['x-case-pin'];
@@ -1099,11 +1147,18 @@ app.post('/api/cases/:folio/clarification', async (req, res) => {
     const expectedAdminPassword = process.env.ADMIN_PASSWORD || '2003';
     const isAuthorizedAdmin = adminHeader === expectedAdminPassword || adminHeader === `Bearer ${expectedAdminPassword}`;
 
+    if (!isAuthorizedAdmin && isFolioPinLocked(folioKey)) {
+      return res.status(429).json({ error: 'Demasiados intentos fallidos con este folio. Intenta de nuevo en unos minutos o contacta al despacho.' });
+    }
+
     const isAuthorizedClient = clientPin && item.accessPin && String(item.accessPin).trim() === clientPin;
 
     if (!isAuthorizedAdmin && !isAuthorizedClient) {
+      registerFailedPinAttempt(folioKey);
       return res.status(401).json({ error: 'No autorizado. La clave de acceso del expediente es incorrecta o no fue proporcionada.' });
     }
+
+    if (!isAuthorizedAdmin) clearPinAttempts(folioKey);
 
     if (question) {
       // Edgar asking a new question
