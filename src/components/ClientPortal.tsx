@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   FileText, Upload, Copy, Check, Search, Calendar, AlertTriangle, 
   User, Mail, Phone, MessageSquare, Clipboard, Eye, EyeOff, ArrowRight,
@@ -10,6 +10,14 @@ import { Case, CaseStatus, Attachment, ClarificationRequest } from '../types';
 
 export default function ClientPortal() {
   const [activeTab, setActiveTab] = useState<'submit' | 'status'>('submit');
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/settings/hero-image')
+      .then(res => res.json())
+      .then(data => setHeroImageUrl(data.url || null))
+      .catch(() => setHeroImageUrl(null));
+  }, []);
   
   // Submit Form State
   const [clientName, setClientName] = useState('');
@@ -306,7 +314,18 @@ export default function ClientPortal() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Header and navigation tabs */}
-      <div className="text-center mb-10">
+      <div className="relative text-center mb-10 rounded-3xl overflow-hidden">
+        {heroImageUrl && (
+          <>
+            <div
+              className="absolute inset-0 bg-cover bg-center opacity-[0.08]"
+              style={{ backgroundImage: `url(${heroImageUrl})` }}
+              aria-hidden="true"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/80 to-white" aria-hidden="true" />
+          </>
+        )}
+        <div className="relative z-10 py-2">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-semibold mb-3">
           <Scale className="w-3.5 h-3.5" /> Recepción Jurídica Digital
         </div>
@@ -397,6 +416,7 @@ export default function ClientPortal() {
               <Search className="w-4 h-4" /> Consultar Estatus de Folio
             </button>
           </div>
+        </div>
         </div>
       </div>
 

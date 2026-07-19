@@ -3,7 +3,8 @@ import {
   FileText, Search, ShieldAlert, Sparkles, Filter, Check, Save,
   AlertTriangle, MessageSquare, Send, BookOpen, Clock, Users,
   CheckCircle2, RefreshCw, Layers, ExternalLink, Mail, Phone, Calendar,
-  Edit2, Plus, Info, MessageCircle, AlertCircle, Trash2, Download, Copy, Printer, Eye, EyeOff, Lock
+  Edit2, Plus, Info, MessageCircle, AlertCircle, Trash2, Download, Copy, Printer, Eye, EyeOff, Lock,
+  Image as ImageIcon, Upload, X
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, 
@@ -154,9 +155,72 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
   const [sqlCopied, setSqlCopied] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Site cover/hero image state (Supreme Admin only)
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+  const [isUploadingHeroImage, setIsUploadingHeroImage] = useState(false);
+  const heroImageInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchHeroImage = async () => {
+    try {
+      const res = await fetch('/api/settings/hero-image');
+      const data = await res.json();
+      setHeroImageUrl(data.url || null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleHeroImageSelected = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      if (!content) return;
+      setIsUploadingHeroImage(true);
+      try {
+        const res = await fetch('/api/settings/hero-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-password': adminPassword
+          },
+          body: JSON.stringify({ name: file.name, type: file.type, content })
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Error al subir la imagen.');
+        }
+        const data = await res.json();
+        setHeroImageUrl(data.url);
+      } catch (err: any) {
+        alert(err.message || 'Error al subir la imagen de portada.');
+      } finally {
+        setIsUploadingHeroImage(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveHeroImage = async () => {
+    if (!confirm('¿Quitar la imagen de portada actual?')) return;
+    setIsUploadingHeroImage(true);
+    try {
+      const res = await fetch('/api/settings/hero-image', {
+        method: 'DELETE',
+        headers: { 'x-admin-password': adminPassword }
+      });
+      if (!res.ok) throw new Error('Error al eliminar la imagen.');
+      setHeroImageUrl(null);
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar la imagen de portada.');
+    } finally {
+      setIsUploadingHeroImage(false);
+    }
+  };
+
   useEffect(() => {
     fetchCases();
     fetchSupabaseDiagnostics();
+    fetchHeroImage();
   }, []);
 
   const fetchSupabaseDiagnostics = async () => {
@@ -737,6 +801,62 @@ REPORTE GENERADO AUTOMÁTICAMENTE PARA REVISIÓN DEL LIC. EDGAR.
           </div>
         )}
       </div>
+
+      {/* Site Cover Image (Supreme Admin only) */}
+      {adminRole === 'supreme' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm text-left">
+          <div className="flex items-center gap-2 mb-1">
+            <ImageIcon className="w-4 h-4 text-indigo-600" />
+            <h3 className="text-sm font-bold text-slate-800">Portada de la Página Principal</h3>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Imagen tenue de fondo detrás del encabezado del portal de clientes. Se adapta automáticamente a celular y escritorio.
+            Recomendado: imagen horizontal (formato <span className="font-semibold">1600×900px o 1920×1080px</span>), en JPG o WEBP, peso menor a <span className="font-semibold">1–2 MB</span> para que cargue rápido. Como se muestra muy tenue, funcionan bien fotos con buena luz y sin texto importante en el centro.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="w-full sm:w-56 h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0">
+              {heroImageUrl ? (
+                <img src={heroImageUrl} alt="Portada actual" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-[11px] text-slate-400">Sin imagen de portada</span>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <input
+                ref={heroImageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleHeroImageSelected(e.target.files[0]);
+                  }
+                  e.target.value = '';
+                }}
+              />
+              <button
+                onClick={() => heroImageInputRef.current?.click()}
+                disabled={isUploadingHeroImage}
+                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {isUploadingHeroImage ? 'Subiendo...' : heroImageUrl ? 'Cambiar Imagen' : 'Subir Imagen desde mi PC'}
+              </button>
+              {heroImageUrl && (
+                <button
+                  onClick={handleRemoveHeroImage}
+                  disabled={isUploadingHeroImage}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60 text-slate-600 font-semibold text-xs rounded-xl transition-all cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" /> Quitar Portada
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
 
       {/* Visual Analytics Grid */}

@@ -463,6 +463,101 @@ ALTER TABLE cases DISABLE ROW LEVEL SECURITY;`
   });
 });
 
+// Hero/cover image lives inside the existing public "case-attachments" bucket,
+// under a fixed "_site/hero-cover.<ext>" path so we don't need a new bucket or DB table.
+const HERO_IMAGE_PREFIX = 'hero-cover';
+const HERO_IMAGE_FOLDER = '_site';
+
+// GET /api/settings/hero-image - Public endpoint, returns current cover image URL (if any)
+app.get('/api/settings/hero-image', async (req, res) => {
+  try {
+    const sb = getSupabaseClient();
+    if (!sb) return res.json({ url: null });
+
+    const { data: files, error } = await sb.storage.from('case-attachments').list(HERO_IMAGE_FOLDER);
+    if (error || !files) return res.json({ url: null });
+
+    const heroFile = files.find((f: any) => f.name.startsWith(HERO_IMAGE_PREFIX));
+    if (!heroFile) return res.json({ url: null });
+
+    const { data: { publicUrl } } = sb.storage
+      .from('case-attachments')
+      .getPublicUrl(`${HERO_IMAGE_FOLDER}/${heroFile.name}`);
+
+    res.json({ url: publicUrl });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Error al obtener la imagen de portada: ' + error.message });
+  }
+});
+
+// POST /api/settings/hero-image - Admin uploads a new cover image (base64 data URL)
+app.post('/api/settings/hero-image', adminAuth, async (req, res) => {
+  try {
+    const { name, type, content } = req.body;
+    if (!content || !type) {
+      return res.status(400).json({ error: 'Falta el archivo de imagen.' });
+    }
+    if (!type.startsWith('image/')) {
+      return res.status(400).json({ error: 'El archivo debe ser una imagen.' });
+    }
+
+    const sb = getSupabaseClient();
+    if (!sb) return res.status(503).json({ error: 'Supabase no está configurado.' });
+
+    await ensureStorageBucket(sb);
+
+    // Remove any previously stored hero images (different extensions) to avoid duplicates
+    const { data: existingFiles } = await sb.storage.from('case-attachments').list(HERO_IMAGE_FOLDER);
+    const oldHeroFiles = (existingFiles || [])
+      .filter((f: any) => f.name.startsWith(HERO_IMAGE_PREFIX))
+      .map((f: any) => `${HERO_IMAGE_FOLDER}/${f.name}`);
+    if (oldHeroFiles.length > 0) {
+      await sb.storage.from('case-attachments').remove(oldHeroFiles);
+    }
+
+    const isBase64DataUrl = content.startsWith('data:');
+    const base64Data = isBase64DataUrl ? content.replace(/^data:[\w/+-]+;base64,/, '') : content;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const extMatch = (name || '').match(/\.([a-zA-Z0-9]+)$/);
+    const ext = extMatch ? extMatch[1].toLowerCase() : (type.split('/')[1] || 'jpg');
+    const storagePath = `${HERO_IMAGE_FOLDER}/${HERO_IMAGE_PREFIX}.${ext}`;
+
+    const { error: uploadError } = await sb.storage
+      .from('case-attachments')
+      .upload(storagePath, buffer, { contentType: type, upsert: true });
+
+    if (uploadError) {
+      return res.status(500).json({ error: 'Error al subir la imagen: ' + uploadError.message });
+    }
+
+    const { data: { publicUrl } } = sb.storage.from('case-attachments').getPublicUrl(storagePath);
+    res.json({ url: publicUrl });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Error al guardar la imagen de portada: ' + error.message });
+  }
+});
+
+// DELETE /api/settings/hero-image - Admin removes the current cover image
+app.delete('/api/settings/hero-image', adminAuth, async (req, res) => {
+  try {
+    const sb = getSupabaseClient();
+    if (!sb) return res.status(503).json({ error: 'Supabase no está configurado.' });
+
+    const { data: existingFiles } = await sb.storage.from('case-attachments').list(HERO_IMAGE_FOLDER);
+    const heroFiles = (existingFiles || [])
+      .filter((f: any) => f.name.startsWith(HERO_IMAGE_PREFIX))
+      .map((f: any) => `${HERO_IMAGE_FOLDER}/${f.name}`);
+
+    if (heroFiles.length > 0) {
+      await sb.storage.from('case-attachments').remove(heroFiles);
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Error al eliminar la imagen de portada: ' + error.message });
+  }
+});
+
 // GET /api/cases - List all cases
 app.get('/api/cases', adminAuth, async (req, res) => {
   try {

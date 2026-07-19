@@ -8,34 +8,34 @@
     "pastedEvidence": "",
     "attachments": [
       {
+        "url": "https://sehgdfmonmvyiknfbjwu.supabase.co/storage/v1/object/public/case-attachments/EXP-2026-07-003/juan_bosco_whatsap.txt",
         "name": "juan bosco whatsap.txt",
         "size": "2.4 KB",
-        "type": "text/plain",
-        "url": "https://sehgdfmonmvyiknfbjwu.supabase.co/storage/v1/object/public/case-attachments/EXP-2026-07-003/juan_bosco_whatsap.txt"
+        "type": "text/plain"
       },
       {
+        "url": "https://sehgdfmonmvyiknfbjwu.supabase.co/storage/v1/object/public/case-attachments/EXP-2026-07-003/Juan_Bosco.jpg",
         "name": "Juan Bosco.jpg",
         "size": "215.5 KB",
-        "type": "image/jpeg",
-        "url": "https://sehgdfmonmvyiknfbjwu.supabase.co/storage/v1/object/public/case-attachments/EXP-2026-07-003/Juan_Bosco.jpg"
+        "type": "image/jpeg"
       },
       {
+        "url": "https://sehgdfmonmvyiknfbjwu.supabase.co/storage/v1/object/public/case-attachments/EXP-2026-07-003/Juan_Bosco2.jpg",
         "name": "Juan Bosco2.jpg",
         "size": "231.9 KB",
-        "type": "image/jpeg",
-        "url": "https://sehgdfmonmvyiknfbjwu.supabase.co/storage/v1/object/public/case-attachments/EXP-2026-07-003/Juan_Bosco2.jpg"
+        "type": "image/jpeg"
       },
       {
+        "url": "https://sehgdfmonmvyiknfbjwu.supabase.co/storage/v1/object/public/case-attachments/EXP-2026-07-003/LIBRO_M_DE_CERA_OK_JBRC_16-02-26.pdf",
         "name": "LIBRO M DE CERA OK JBRC 16-02-26.pdf",
         "size": "5431.2 KB",
-        "type": "application/pdf",
-        "url": "https://sehgdfmonmvyiknfbjwu.supabase.co/storage/v1/object/public/case-attachments/EXP-2026-07-003/LIBRO_M_DE_CERA_OK_JBRC_16-02-26.pdf"
+        "type": "application/pdf"
       },
       {
+        "url": "https://sehgdfmonmvyiknfbjwu.supabase.co/storage/v1/object/public/case-attachments/EXP-2026-07-003/mi_pagina.jpg",
         "name": "mi pagina.jpg",
         "size": "78.7 KB",
-        "type": "image/jpeg",
-        "url": "https://sehgdfmonmvyiknfbjwu.supabase.co/storage/v1/object/public/case-attachments/EXP-2026-07-003/mi_pagina.jpg"
+        "type": "image/jpeg"
       }
     ],
     "status": "En Proceso",
