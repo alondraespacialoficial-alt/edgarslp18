@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, UserCheck, Briefcase, FileText, Sparkles, Scale, Clock, Globe, Lock } from 'lucide-react';
+import { ShieldCheck, UserCheck, Briefcase, FileText, Scale, Clock, Globe, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ClientPortal from './components/ClientPortal';
 import AdminDashboard from './components/AdminDashboard';
@@ -91,14 +91,14 @@ export default function App() {
           <div 
             onClick={handleLogoClick}
             className="flex items-center gap-2.5 cursor-pointer select-none active:scale-95 transition-all"
-            title={!isAdminUnlocked ? "Charlitron Despacho Inteligente" : undefined}
+            title={!isAdminUnlocked ? "Despacho Inteligente" : undefined}
           >
             <div className="p-2 bg-indigo-600 rounded-xl text-white shadow shadow-indigo-600/30">
               <Scale className="w-5 h-5" />
             </div>
             <div className="text-left">
-              <h1 className="font-display font-bold text-base tracking-tight leading-none">Charlitron</h1>
-              <p className="text-[10px] text-indigo-200 mt-0.5 font-medium">Despacho Inteligente • Asesoría Digital</p>
+              <h1 className="font-display font-bold text-base tracking-tight leading-none">Despacho Inteligente</h1>
+              <p className="text-[10px] text-indigo-200 mt-0.5 font-medium">Recepción Jurídica Digital</p>
             </div>
           </div>
 
@@ -255,9 +255,9 @@ export default function App() {
       {/* Footer Details */}
       <footer className="bg-white border-t border-slate-200/60 py-4 text-center text-xs text-slate-400 font-medium print:hidden shrink-0 mt-12">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <p>© 2026 Charlitron Despacho Inteligente. Todos los derechos reservados.</p>
+          <p>© 2026 Despacho Inteligente. Todos los derechos reservados.</p>
           <p className="flex items-center gap-1">
-            Supervisado por humanos <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> e impulsado por <Sparkles className="w-3 h-3 text-indigo-500" /> Gemini AI
+            Supervisado por profesionales jurídicos <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
           </p>
         </div>
       </footer>

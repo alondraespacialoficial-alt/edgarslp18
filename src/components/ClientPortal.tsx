@@ -266,7 +266,7 @@ export default function ClientPortal() {
       case 'Recibido':
         return <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-200">Recibido</span>;
       case 'En Análisis':
-        return <span className="px-3 py-1 bg-yellow-50 text-yellow-700 text-xs font-semibold rounded-full border border-yellow-200 flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> En Análisis IA</span>;
+        return <span className="px-3 py-1 bg-yellow-50 text-yellow-700 text-xs font-semibold rounded-full border border-yellow-200 flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> En Revisión</span>;
       case 'En Proceso':
         return <span className="px-3 py-1 bg-sky-50 text-sky-700 text-xs font-semibold rounded-full border border-sky-200 flex items-center gap-1">En Proceso</span>;
       case 'Faltan Datos':
@@ -287,11 +287,11 @@ export default function ClientPortal() {
       {/* Header and navigation tabs */}
       <div className="text-center mb-10">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-semibold mb-3">
-          <Sparkles className="w-3.5 h-3.5" /> Portal de Recepción Digital Legal
+          <Scale className="w-3.5 h-3.5" /> Recepción Jurídica Digital
         </div>
-        <h1 className="font-display text-3xl font-bold text-slate-900 tracking-tight">Charlitron Despacho Inteligente</h1>
+        <h1 className="font-display text-3xl font-bold text-slate-900 tracking-tight">Despacho Inteligente</h1>
         <p className="text-slate-500 mt-2 text-sm max-w-xl mx-auto leading-relaxed">
-          Ingresa tu asunto legal de forma estructurada. Nuestro sistema de Inteligencia Artificial organizará tu caso y generará un análisis preliminar para revisión del responsable jurídico.
+          Presenta tu asunto de forma estructurada para su revisión documental y jurídica. La plataforma organiza la información, integra la evidencia y canaliza tu expediente para atención profesional.
         </p>
 
         {/* 4 Bloques Informativos de Confianza Jurídica */}
@@ -305,7 +305,7 @@ export default function ClientPortal() {
                 ¿Qué es la plataforma?
               </h3>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                Charlitron Despacho Inteligente es una plataforma digital de recepción, organización y análisis preliminar de asuntos legales, con revisión humana.
+                Despacho Inteligente es una plataforma de recepción jurídica digital diseñada para concentrar información, documentos y evidencia relacionada con asuntos legales, a fin de facilitar su revisión y seguimiento profesional.
               </p>
             </div>
           </div>
@@ -319,7 +319,7 @@ export default function ClientPortal() {
                 ¿Para qué sirve?
               </h3>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                Recibir amenazas, demandas, requerimientos, conflictos contractuales, mensajes, PDFs y evidencia para convertirlos en expediente digital con folio.
+                Sirve para registrar asuntos, aportar documentos, organizar hechos, adjuntar evidencia y generar un folio de control para su atención y evaluación.
               </p>
             </div>
           </div>
@@ -333,7 +333,7 @@ export default function ClientPortal() {
                 ¿Qué no es?
               </h3>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                No sustituye asesoría jurídica personalizada, no garantiza resultado y no crea automáticamente una relación abogado-cliente por el solo envío del formulario.
+                El envío de información por este medio no constituye por sí mismo representación legal, asesoría definitiva ni aceptación automática del asunto.
               </p>
             </div>
           </div>
@@ -347,7 +347,7 @@ export default function ClientPortal() {
                 ¿Cómo funciona?
               </h3>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                Usuario envía caso, sistema genera folio, IA organiza y resume, admin revisa, después se responde o se piden datos adicionales para tu atención.
+                Registras tu asunto, se genera un folio de recepción, la información se organiza digitalmente y el expediente queda disponible para revisión profesional; en su caso, se solicitarán datos adicionales o se dará seguimiento.
               </p>
             </div>
           </div>
@@ -526,10 +526,10 @@ export default function ClientPortal() {
                 {/* Aviso Importante Banner */}
                 <div className="mb-6 bg-amber-50/70 border border-amber-200/80 rounded-xl p-4 text-left">
                   <h3 className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                    <ShieldAlert className="w-4 h-4 text-amber-600" /> Aviso Importante
+                    <ShieldAlert className="w-4 h-4 text-amber-600" /> Aviso Legal de Envío de Información
                   </h3>
                   <p className="text-[11px] text-amber-900/95 leading-relaxed font-medium">
-                    Charlitron Despacho Inteligente es una plataforma de recepción digital de asuntos legales y análisis preliminar asistido por inteligencia artificial. La información enviada será organizada y analizada de manera inicial para facilitar su revisión por un responsable humano. El envío de información mediante esta plataforma no constituye por sí mismo asesoría jurídica definitiva, representación legal, ni garantía de aceptación del asunto.
+                    Al enviar este formulario, la persona usuaria manifiesta que la información y documentación proporcionadas corresponden a hechos que declara bajo su responsabilidad, y autoriza su recepción, almacenamiento, organización, revisión y análisis preliminar para fines de valoración jurídica y seguimiento del asunto. El envío de documentos no genera por sí mismo una relación de representación legal, ni implica aceptación automática del caso.
                   </p>
                 </div>
 
@@ -645,7 +645,7 @@ export default function ClientPortal() {
 
                   {attachments.length > 0 && (
                     <div className="mt-4 border border-slate-100 rounded-xl p-3 bg-slate-50/50">
-                      <p className="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1">Archivos cargados para análisis ({attachments.length}):</p>
+                      <p className="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1">Archivos cargados al expediente ({attachments.length}):</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {attachments.map((file, idx) => (
                           <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 p-2 rounded-lg text-xs">
@@ -680,7 +680,7 @@ export default function ClientPortal() {
                       className="mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
                     />
                     <span className="text-[11px] text-slate-600 leading-relaxed select-none">
-                      Declaro que la información proporcionada es verdadera a mi leal saber y entender, autorizo su análisis preliminar automatizado y acepto los{' '}
+                      Declaro que la información proporcionada es veraz a mi leal saber y entender, autorizo la recepción y revisión de los documentos enviados, y acepto el Aviso Legal anterior, los{' '}
                       <button 
                         type="button" 
                         onClick={() => setShowTermsModal(true)} 
@@ -709,7 +709,7 @@ export default function ClientPortal() {
                   >
                     {isSubmitting ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" /> Procesando y Analizando con IA...
+                        <RefreshCw className="w-4 h-4 animate-spin" /> Procesando y organizando expediente...
                       </>
                     ) : (
                       <>
@@ -1113,12 +1113,12 @@ export default function ClientPortal() {
               
               <div className="space-y-4 text-xs text-slate-600 leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
                 <p className="font-semibold text-slate-800">
-                  Bienvenido a la prueba piloto de Charlitron Despacho Inteligente. Lea atentamente los siguientes términos:
+                  Bienvenido a la prueba piloto de Despacho Inteligente. Lea atentamente los siguientes términos:
                 </p>
                 <div>
                   <h4 className="font-bold text-slate-800 mb-1">1. Recepción y Análisis Preliminar</h4>
                   <p>
-                    La plataforma sirve únicamente para el registro formal, organización inicial de evidencias y un análisis preliminar automatizado asistido por inteligencia artificial. El folio otorgado es un acuse de recibo electrónico, no una aceptación o garantía de representación.
+                    La plataforma sirve únicamente para el registro formal, organización inicial de evidencias y un análisis documental preliminar. El folio otorgado es un acuse de recibo electrónico, no una aceptación o garantía de representación.
                   </p>
                 </div>
                 <div>
@@ -1198,12 +1198,12 @@ export default function ClientPortal() {
               
               <div className="space-y-4 text-xs text-slate-600 leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
                 <p className="font-semibold text-slate-800">
-                  En Charlitron Despacho Inteligente, su confianza es nuestro principal pilar. Lea sobre el tratamiento de sus datos personales y sensibles:
+                  En Despacho Inteligente, su confianza es nuestro principal pilar. Lea sobre el tratamiento de sus datos personales y sensibles:
                 </p>
                 <div>
                   <h4 className="font-bold text-slate-800 mb-1">1. Responsable del Tratamiento</h4>
                   <p>
-                    La plataforma Charlitron Despacho Inteligente actúa como receptora e integradora de su expediente jurídico preliminar. Garantizamos el resguardo seguro y confidencial de la información con el mayor rigor ético.
+                    La plataforma Despacho Inteligente actúa como receptora e integradora de su expediente jurídico preliminar. Garantizamos el resguardo seguro y confidencial de la información con el mayor rigor ético.
                   </p>
                 </div>
                 <div>
@@ -1215,7 +1215,7 @@ export default function ClientPortal() {
                 <div>
                   <h4 className="font-bold text-slate-800 mb-1">3. Finalidades Primarias</h4>
                   <p>
-                    La recolección tiene por único fin estructurar su expediente mediante herramientas de Inteligencia Artificial para generar una cronología formal de hechos, resumen de partes y fundamentaciones preliminares para que el Lic. Edgar u otro responsable jurídico pueda analizar de forma rápida el caso y emitir una opinión informada.
+                    La recolección tiene por único fin estructurar su expediente mediante herramientas digitales de análisis documental para generar una cronología formal de hechos, resumen de partes y fundamentaciones preliminares para que el Lic. Edgar u otro responsable jurídico pueda analizar de forma rápida el caso y emitir una opinión informada.
                   </p>
                 </div>
                 <div>
