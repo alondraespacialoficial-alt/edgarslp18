@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { Case, CaseStatus, AIAnalysis, LegalGround, InvolvedParty, TimelineEntry, ChatMessage, Attachment } from '../types';
+import { resizeImageFile, readAttachmentFile, parseApiErrorMessage } from '../utils/fileUpload';
 
 interface AdminDashboardProps {
   adminPassword?: string;
@@ -65,24 +66,18 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   const processAdminExtraFiles = (files: FileList) => {
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          const content = event.target.result as string;
-          const newAttachment: Attachment = {
-            name: file.name,
-            size: `${(file.size / 1024).toFixed(1)} KB`,
-            type: file.type,
-            content: content
-          };
-          setAdminExtraAttachments(prev => [...prev, newAttachment]);
-        }
-      };
-      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
-        reader.readAsDataURL(file);
-      } else {
-        reader.readAsText(file);
+    Array.from(files).forEach(async file => {
+      try {
+        const { content, type } = await readAttachmentFile(file);
+        const newAttachment: Attachment = {
+          name: file.name,
+          size: `${(file.size / 1024).toFixed(1)} KB`,
+          type,
+          content
+        };
+        setAdminExtraAttachments(prev => [...prev, newAttachment]);
+      } catch (err: any) {
+        alert(err.message || `No se pudo procesar el archivo "${file.name}".`);
       }
     });
   };
@@ -99,7 +94,7 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
         },
         body: JSON.stringify({ attachments: adminExtraAttachments })
       });
-      if (!response.ok) throw new Error('Error al subir los archivos adicionales.');
+      if (!response.ok) throw new Error(await parseApiErrorMessage(response, 'Error al subir los archivos adicionales.'));
       const updatedCase: Case = await response.json();
       setSelectedCase(updatedCase);
       setCases(prev => prev.map(c => c.folio === updatedCase.folio ? updatedCase : c));
@@ -160,6 +155,29 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
   const [isUploadingHeroImage, setIsUploadingHeroImage] = useState(false);
   const heroImageInputRef = useRef<HTMLInputElement>(null);
 
+  // System monitoring state (Supreme Admin only)
+  const [systemHealth, setSystemHealth] = useState<{
+    uptimeSeconds: number;
+    totalCases: number;
+    supabaseConfigured: boolean;
+    supabaseLastError: string | null;
+    recentErrors: { timestamp: string; context: string; message: string }[];
+  } | null>(null);
+
+  const fetchSystemHealth = async () => {
+    try {
+      const res = await fetch('/api/system/health', {
+        headers: { 'x-admin-password': adminPassword }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSystemHealth(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchHeroImage = async () => {
     try {
       const res = await fetch('/api/settings/hero-image');
@@ -172,54 +190,8 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
 
   // Resize + recompress an image client-side before uploading, so large phone
   // photos don't hit the server/platform request size limit (Vercel caps ~4.5MB).
-  const resizeImageForUpload = (file: File, maxDimension = 1920, quality = 0.82): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
-      reader.onload = () => {
-        const img = new Image();
-        img.onerror = () => reject(new Error('El archivo seleccionado no es una imagen válida.'));
-        img.onload = () => {
-          let { width, height } = img;
-          if (width > maxDimension || height > maxDimension) {
-            if (width >= height) {
-              height = Math.round((height / width) * maxDimension);
-              width = maxDimension;
-            } else {
-              width = Math.round((width / height) * maxDimension);
-              height = maxDimension;
-            }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('No se pudo procesar la imagen.'));
-            return;
-          }
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, width, height);
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        };
-        img.src = reader.result as string;
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // Safely parse an API error response, since platform-level errors (e.g. 413
-  // Payload Too Large from the hosting provider) return plain text, not JSON.
-  const parseApiError = async (res: Response, fallback: string): Promise<string> => {
-    try {
-      const data = await res.clone().json();
-      return data.error || fallback;
-    } catch {
-      if (res.status === 413) return 'La imagen es demasiado pesada para subirse. Intenta con una más ligera.';
-      return `${fallback} (código ${res.status})`;
-    }
-  };
+  const resizeImageForUpload = (file: File, maxDimension = 1920, quality = 0.82) =>
+    resizeImageFile(file, maxDimension, quality);
 
   const handleHeroImageSelected = async (file: File) => {
     setIsUploadingHeroImage(true);
@@ -234,7 +206,7 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
         body: JSON.stringify({ name: file.name, type: 'image/jpeg', content })
       });
       if (!res.ok) {
-        throw new Error(await parseApiError(res, 'Error al subir la imagen.'));
+        throw new Error(await parseApiErrorMessage(res, 'Error al subir la imagen.'));
       }
       const data = await res.json();
       setHeroImageUrl(data.url);
@@ -266,6 +238,7 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
     fetchCases();
     fetchSupabaseDiagnostics();
     fetchHeroImage();
+    fetchSystemHealth();
   }, []);
 
   const fetchSupabaseDiagnostics = async () => {
@@ -903,6 +876,73 @@ REPORTE GENERADO AUTOMÁTICAMENTE PARA REVISIÓN DEL LIC. EDGAR.
         </div>
       )}
 
+      {/* System Monitoring (Supreme Admin only) */}
+      {adminRole === 'supreme' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm text-left">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-indigo-600" />
+              <h3 className="text-sm font-bold text-slate-800">Monitoreo del Sistema</h3>
+            </div>
+            <button
+              onClick={fetchSystemHealth}
+              className="flex items-center gap-1 text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+            >
+              <RefreshCw className="w-3 h-3" /> Actualizar
+            </button>
+          </div>
+
+          {systemHealth ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Servidor Activo Desde</p>
+                  <p className="text-xs font-bold text-slate-700 mt-1">
+                    {(() => {
+                      const s = systemHealth.uptimeSeconds;
+                      const h = Math.floor(s / 3600);
+                      const m = Math.floor((s % 3600) / 60);
+                      return h > 0 ? `${h}h ${m}min` : `${m}min`;
+                    })()}
+                  </p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Expedientes Totales</p>
+                  <p className="text-xs font-bold text-slate-700 mt-1">{systemHealth.totalCases}</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Base de Datos en la Nube</p>
+                  <p className={`text-xs font-bold mt-1 ${systemHealth.supabaseConfigured && !systemHealth.supabaseLastError ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {systemHealth.supabaseConfigured ? (systemHealth.supabaseLastError ? 'Con errores' : 'Conectada') : 'No configurada'}
+                  </p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Errores Recientes</p>
+                  <p className={`text-xs font-bold mt-1 ${systemHealth.recentErrors.length > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    {systemHealth.recentErrors.length}
+                  </p>
+                </div>
+              </div>
+
+              {systemHealth.recentErrors.length > 0 ? (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {systemHealth.recentErrors.map((e, idx) => (
+                    <div key={idx} className="bg-rose-50 border border-rose-100 rounded-lg p-2 text-[10px] text-rose-700 flex flex-col">
+                      <span className="font-mono font-semibold">{e.context}</span>
+                      <span className="truncate">{e.message}</span>
+                      <span className="text-rose-400">{new Date(e.timestamp).toLocaleString('es-MX')}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[10px] text-emerald-600 font-semibold">✅ Sin errores recientes registrados.</p>
+              )}
+            </>
+          ) : (
+            <p className="text-[10px] text-slate-400">Cargando estado del sistema...</p>
+          )}
+        </div>
+      )}
 
       {/* Visual Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1178,6 +1218,11 @@ REPORTE GENERADO AUTOMÁTICAMENTE PARA REVISIÓN DEL LIC. EDGAR.
                     <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-slate-400" /> {selectedCase.clientEmail}</span>
                     {selectedCase.clientPhone && <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-slate-400" /> {selectedCase.clientPhone}</span>}
                     <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-slate-400" /> {new Date(selectedCase.createdAt).toLocaleString('es-MX')}</span>
+                    {selectedCase.updatedAt && (
+                      <span className="flex items-center gap-1 text-slate-400">
+                        <Clock className="w-3 h-3 text-slate-400" /> Última actualización: {new Date(selectedCase.updatedAt).toLocaleString('es-MX')}
+                      </span>
+                    )}
                   </div>
                   
                   {/* Risks split division */}
@@ -1356,6 +1401,23 @@ REPORTE GENERADO AUTOMÁTICAMENTE PARA REVISIÓN DEL LIC. EDGAR.
                           {selectedCase.description}
                         </div>
                       </div>
+
+                      {/* Status History / Audit Trail */}
+                      {selectedCase.statusHistory && selectedCase.statusHistory.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" /> Historial de Estatus
+                          </h4>
+                          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                            {selectedCase.statusHistory.slice().reverse().map((entry, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-xs gap-2">
+                                <span className="font-semibold text-slate-700">{entry.status}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{new Date(entry.changedAt).toLocaleString('es-MX')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Copied WhatsApp evidence */}
                       {selectedCase.pastedEvidence && (

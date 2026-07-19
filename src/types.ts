@@ -8,6 +8,11 @@ export interface Attachment {
   url?: string; // Public URL if stored in Supabase Storage
 }
 
+export interface StatusHistoryEntry {
+  status: CaseStatus;
+  changedAt: string;
+}
+
 export interface TimelineEntry {
   date: string;
   event: string;
@@ -83,6 +88,8 @@ export interface Case {
   attachments: Attachment[];
   status: CaseStatus;
   createdAt: string;
+  updatedAt?: string; // Last time the case was modified (status, notes, attachments, etc.)
+  statusHistory?: StatusHistoryEntry[]; // Audit trail of status changes over time
   
   // AI-generated analysis
   aiAnalysis?: AIAnalysis;

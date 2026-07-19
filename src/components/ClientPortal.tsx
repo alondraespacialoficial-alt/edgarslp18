@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Case, CaseStatus, Attachment, ClarificationRequest } from '../types';
+import { readAttachmentFile, parseApiErrorMessage } from '../utils/fileUpload';
 
 export default function ClientPortal() {
   const [activeTab, setActiveTab] = useState<'submit' | 'status'>('submit');
@@ -56,24 +57,18 @@ export default function ClientPortal() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processExtraFiles = (files: FileList) => {
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          const content = event.target.result as string;
-          const newAttachment: Attachment = {
-            name: file.name,
-            size: `${(file.size / 1024).toFixed(1)} KB`,
-            type: file.type,
-            content: content
-          };
-          setExtraAttachments(prev => [...prev, newAttachment]);
-        }
-      };
-      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
-        reader.readAsDataURL(file);
-      } else {
-        reader.readAsText(file);
+    Array.from(files).forEach(async file => {
+      try {
+        const { content, type } = await readAttachmentFile(file);
+        const newAttachment: Attachment = {
+          name: file.name,
+          size: `${(file.size / 1024).toFixed(1)} KB`,
+          type,
+          content
+        };
+        setExtraAttachments(prev => [...prev, newAttachment]);
+      } catch (err: any) {
+        alert(err.message || `No se pudo procesar el archivo "${file.name}".`);
       }
     });
   };
@@ -90,7 +85,7 @@ export default function ClientPortal() {
         },
         body: JSON.stringify({ attachments: extraAttachments })
       });
-      if (!response.ok) throw new Error('Error al subir los archivos adicionales.');
+      if (!response.ok) throw new Error(await parseApiErrorMessage(response, 'Error al subir los archivos adicionales.'));
       const updatedCase: Case = await response.json();
       setSearchedCase(updatedCase);
       setExtraAttachments([]);
@@ -115,25 +110,18 @@ export default function ClientPortal() {
   };
 
   const processFiles = (files: FileList) => {
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          const content = event.target.result as string;
-          const newAttachment: Attachment = {
-            name: file.name,
-            size: `${(file.size / 1024).toFixed(1)} KB`,
-            type: file.type,
-            content: content
-          };
-          setAttachments(prev => [...prev, newAttachment]);
-        }
-      };
-      // Read images or pdfs as base64 data url, txt as plain text
-      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
-        reader.readAsDataURL(file);
-      } else {
-        reader.readAsText(file);
+    Array.from(files).forEach(async file => {
+      try {
+        const { content, type } = await readAttachmentFile(file);
+        const newAttachment: Attachment = {
+          name: file.name,
+          size: `${(file.size / 1024).toFixed(1)} KB`,
+          type,
+          content
+        };
+        setAttachments(prev => [...prev, newAttachment]);
+      } catch (err: any) {
+        alert(err.message || `No se pudo procesar el archivo "${file.name}".`);
       }
     });
   };
@@ -191,7 +179,7 @@ export default function ClientPortal() {
         })
       });
 
-      if (!response.ok) throw new Error('Error al registrar caso.');
+      if (!response.ok) throw new Error(await parseApiErrorMessage(response, 'Error al registrar caso.'));
       
       const data: Case = await response.json();
       setCreatedCase(data);
@@ -205,9 +193,9 @@ export default function ClientPortal() {
       setDescription('');
       setPastedEvidence('');
       setAttachments([]);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Hubo un error al procesar tu asunto. Por favor, reintenta.');
+      alert(err.message || 'Hubo un error al procesar tu asunto. Por favor, reintenta.');
     } finally {
       setIsSubmitting(false);
     }
@@ -898,6 +886,11 @@ export default function ClientPortal() {
                     <div className="flex flex-col items-start sm:items-end gap-1 text-left sm:text-right">
                       <span className="text-[10px] text-slate-400 font-semibold">ESTATUS ACTUAL</span>
                       {getStatusBadge(searchedCase.status)}
+                      {searchedCase.updatedAt && (
+                        <span className="text-[9px] text-slate-400 mt-0.5">
+                          Última actualización: {new Date(searchedCase.updatedAt).toLocaleString('es-MX')}
+                        </span>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -964,6 +957,23 @@ export default function ClientPortal() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Status History / Audit Trail */}
+                  {searchedCase.statusHistory && searchedCase.statusHistory.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" /> Historial de Estatus
+                      </h4>
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+                        {searchedCase.statusHistory.slice().reverse().map((entry, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs gap-2">
+                            <span className="font-semibold text-slate-700">{entry.status}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{new Date(entry.changedAt).toLocaleString('es-MX')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Submitted Facts & Attachments View */}
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">

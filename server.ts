@@ -27,6 +27,21 @@ let supabaseLastError: string | null = null;
 let lastUsedUrl: string | null = null;
 let lastUsedKey: string | null = null;
 
+// Lightweight in-memory monitoring: tracks recent server-side errors so the Supreme
+// Admin panel can surface them without needing an external service like Sentry.
+const SERVER_START_TIME = Date.now();
+const MAX_TRACKED_ERRORS = 20;
+let recentServerErrors: { timestamp: string; context: string; message: string }[] = [];
+
+function logServerError(context: string, err: any) {
+  recentServerErrors.unshift({
+    timestamp: new Date().toISOString(),
+    context,
+    message: err?.message || String(err)
+  });
+  recentServerErrors = recentServerErrors.slice(0, MAX_TRACKED_ERRORS);
+}
+
 // Simple in-memory rate limiter to slow down brute-force guessing of the 4-digit case PIN.
 // Not distributed-safe across serverless instances, but adds meaningful friction per warm instance.
 const MAX_PIN_ATTEMPTS = 5;
@@ -145,6 +160,8 @@ async function syncCasesToSupabase(localCases: any[]): Promise<{ ok: boolean; er
       const ai = { ...(c.aiAnalysis || {}) };
       if (c.isDeleted !== undefined) ai.isDeleted = c.isDeleted;
       if (c.deletedAt !== undefined) ai.deletedAt = c.deletedAt;
+      if (c.updatedAt !== undefined) ai.updatedAt = c.updatedAt;
+      if (c.statusHistory !== undefined) ai.statusHistory = c.statusHistory;
 
       return {
         folio: c.folio,
@@ -173,6 +190,7 @@ async function syncCasesToSupabase(localCases: any[]): Promise<{ ok: boolean; er
     if (error) {
       supabaseLastError = `Upsert Error: ${error.message} (Code: ${error.code})`;
       console.warn('Supabase sync warning (table "cases" might not exist or need RLS adjustments):', error.message);
+      logServerError('syncCasesToSupabase', error);
       return { ok: false, error: supabaseLastError };
     } else {
       supabaseLastError = null; // Clear error on success!
@@ -182,6 +200,7 @@ async function syncCasesToSupabase(localCases: any[]): Promise<{ ok: boolean; er
   } catch (err: any) {
     supabaseLastError = `Sync Exception: ${err.message}`;
     console.error('Supabase sync failed:', err.message);
+    logServerError('syncCasesToSupabase', err);
     return { ok: false, error: supabaseLastError };
   }
 }
@@ -225,7 +244,9 @@ async function fetchCasesFromSupabase(): Promise<any[] | null> {
           chatHistory: c.chat_history || c.chatHistory || [],
           accessPin: c.access_pin || c.accessPin || '1234',
           isDeleted: ai.isDeleted || false,
-          deletedAt: ai.deletedAt || null
+          deletedAt: ai.deletedAt || null,
+          updatedAt: ai.updatedAt || c.created_at || c.createdAt,
+          statusHistory: ai.statusHistory || []
         };
       });
     }
@@ -460,6 +481,27 @@ CREATE TABLE IF NOT EXISTS cases (
 
 -- 2. DESACTIVAR POLÍTICAS RLS (Para desarrollo rápido y pruebas sin bloqueos):
 ALTER TABLE cases DISABLE ROW LEVEL SECURITY;`
+  });
+});
+
+// GET /api/system/health - Basic in-memory monitoring for the Supreme Admin panel
+app.get('/api/system/health', adminAuth, async (req, res) => {
+  let totalCases = 0;
+  try {
+    await ensureDatabase();
+    const data = await fs.readFile(DB_FILE, 'utf-8');
+    totalCases = JSON.parse(data).length;
+  } catch {
+    // Non-fatal: health check should still respond even if the case count fails
+  }
+
+  res.json({
+    uptimeSeconds: Math.floor((Date.now() - SERVER_START_TIME) / 1000),
+    serverStartedAt: new Date(SERVER_START_TIME).toISOString(),
+    totalCases,
+    supabaseConfigured: !!getSupabaseClient(),
+    supabaseLastError,
+    recentErrors: recentServerErrors
   });
 });
 
@@ -714,6 +756,7 @@ app.post('/api/cases', async (req, res) => {
 
     // Use the private access password the client created themselves for this case
     const accessPin = trimmedPin;
+    const nowIso = new Date().toISOString();
 
     const newCase: any = {
       folio,
@@ -724,7 +767,9 @@ app.post('/api/cases', async (req, res) => {
       pastedEvidence: pastedEvidence || '',
       attachments: processedAttachments,
       status: 'Recibido',
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      statusHistory: [{ status: 'Recibido', changedAt: nowIso }],
       clarificationRequests: [],
       chatHistory: [],
       accessPin
@@ -976,6 +1021,7 @@ app.post('/api/cases', async (req, res) => {
 
   } catch (error: any) {
     console.error('Error creating case:', error);
+    logServerError('POST /api/cases', error);
     res.status(500).json({ error: 'Error al registrar el expediente: ' + error.message });
   }
 });
@@ -994,10 +1040,18 @@ app.post('/api/cases/:folio/update', adminAuth, async (req, res) => {
     }
 
     const item = cases[caseIndex];
+    const previousStatus = item.status;
     if (status) item.status = status;
     if (lawyerNotes !== undefined) item.lawyerNotes = lawyerNotes;
     if (customStrategy !== undefined) item.customStrategy = customStrategy;
     if (customResponseDraft !== undefined) item.customResponseDraft = customResponseDraft;
+
+    const nowIso = new Date().toISOString();
+    if (status && status !== previousStatus) {
+      if (!Array.isArray(item.statusHistory)) item.statusHistory = [];
+      item.statusHistory.push({ status, changedAt: nowIso });
+    }
+    item.updatedAt = nowIso;
 
     cases[caseIndex] = item;
     await fs.writeFile(DB_FILE, JSON.stringify(cases, null, 2), 'utf-8');
@@ -1012,6 +1066,7 @@ app.post('/api/cases/:folio/update', adminAuth, async (req, res) => {
     }
     res.json(item);
   } catch (error: any) {
+    logServerError('POST /api/cases/:folio/update', error);
     res.status(500).json({ error: 'Error al actualizar expediente: ' + error.message });
   }
 });
@@ -1217,6 +1272,7 @@ app.post('/api/cases/:folio/attachments', async (req, res) => {
 
     // Append new attachments
     item.attachments = [...item.attachments, ...processedAttachments];
+    item.updatedAt = new Date().toISOString();
 
     cases[caseIndex] = item;
     await fs.writeFile(DB_FILE, JSON.stringify(cases, null, 2), 'utf-8');
@@ -1224,6 +1280,7 @@ app.post('/api/cases/:folio/attachments', async (req, res) => {
 
     res.json(item);
   } catch (error: any) {
+    logServerError('POST /api/cases/:folio/attachments', error);
     res.status(500).json({ error: 'Error al agregar archivos adjuntos: ' + error.message });
   }
 });
