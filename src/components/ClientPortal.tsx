@@ -48,6 +48,7 @@ export default function ClientPortal() {
   const [extraAttachments, setExtraAttachments] = useState<Attachment[]>([]);
   const [isUploadingExtra, setIsUploadingExtra] = useState(false);
   const [extraDragActive, setExtraDragActive] = useState(false);
+  const [extraDisclaimerAccepted, setExtraDisclaimerAccepted] = useState(false);
   const extraFileInputRef = useRef<HTMLInputElement>(null);
 
   const [copied, setCopied] = useState(false);
@@ -89,7 +90,8 @@ export default function ClientPortal() {
       const updatedCase: Case = await response.json();
       setSearchedCase(updatedCase);
       setExtraAttachments([]);
-      alert('¡Archivos adicionales agregados correctamente a tu expediente!');
+      setExtraDisclaimerAccepted(false);
+      alert(`¡Archivos adicionales recibidos! Acuse de recibo: ${new Date().toLocaleString('es-MX')}.\n\nRecuerda que la recepción de estos documentos no implica aceptación automática de tu asunto ni compromiso de plazo de respuesta por parte del despacho.`);
     } catch (err: any) {
       console.error(err);
       alert(err.message || 'Error al subir los archivos.');
@@ -1074,9 +1076,20 @@ export default function ClientPortal() {
                               </div>
                             ))}
                           </div>
+                          <label className="mt-3 flex items-start gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={extraDisclaimerAccepted}
+                              onChange={e => setExtraDisclaimerAccepted(e.target.checked)}
+                              className="mt-0.5 shrink-0"
+                            />
+                            <span className="text-[9px] text-slate-500 leading-relaxed">
+                              Entiendo que el envío de estos documentos queda registrado con fecha y hora, pero no implica aceptación automática de mi asunto ni compromiso de plazo de respuesta por parte del despacho.
+                            </span>
+                          </label>
                           <button
                             type="button"
-                            disabled={isUploadingExtra}
+                            disabled={isUploadingExtra || !extraDisclaimerAccepted}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleUploadExtraAttachments();

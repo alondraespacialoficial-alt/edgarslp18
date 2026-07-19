@@ -13,6 +13,12 @@ export interface StatusHistoryEntry {
   changedAt: string;
 }
 
+export interface AttachmentLogEntry {
+  uploadedAt: string;
+  fileNames: string[];
+  uploadedBy: 'client' | 'admin';
+}
+
 export interface TimelineEntry {
   date: string;
   event: string;
@@ -90,6 +96,7 @@ export interface Case {
   createdAt: string;
   updatedAt?: string; // Last time the case was modified (status, notes, attachments, etc.)
   statusHistory?: StatusHistoryEntry[]; // Audit trail of status changes over time
+  attachmentLog?: AttachmentLogEntry[]; // Audit trail of every batch of documents received, with timestamp
   
   // AI-generated analysis
   aiAnalysis?: AIAnalysis;

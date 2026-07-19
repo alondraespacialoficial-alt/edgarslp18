@@ -162,6 +162,7 @@ async function syncCasesToSupabase(localCases: any[]): Promise<{ ok: boolean; er
       if (c.deletedAt !== undefined) ai.deletedAt = c.deletedAt;
       if (c.updatedAt !== undefined) ai.updatedAt = c.updatedAt;
       if (c.statusHistory !== undefined) ai.statusHistory = c.statusHistory;
+      if (c.attachmentLog !== undefined) ai.attachmentLog = c.attachmentLog;
 
       return {
         folio: c.folio,
@@ -246,7 +247,8 @@ async function fetchCasesFromSupabase(): Promise<any[] | null> {
           isDeleted: ai.isDeleted || false,
           deletedAt: ai.deletedAt || null,
           updatedAt: ai.updatedAt || c.created_at || c.createdAt,
-          statusHistory: ai.statusHistory || []
+          statusHistory: ai.statusHistory || [],
+          attachmentLog: ai.attachmentLog || []
         };
       });
     }
@@ -770,6 +772,9 @@ app.post('/api/cases', async (req, res) => {
       createdAt: nowIso,
       updatedAt: nowIso,
       statusHistory: [{ status: 'Recibido', changedAt: nowIso }],
+      attachmentLog: processedAttachments.length > 0
+        ? [{ uploadedAt: nowIso, fileNames: processedAttachments.map((f: any) => f.name), uploadedBy: 'client' }]
+        : [],
       clarificationRequests: [],
       chatHistory: [],
       accessPin
@@ -1272,7 +1277,18 @@ app.post('/api/cases/:folio/attachments', async (req, res) => {
 
     // Append new attachments
     item.attachments = [...item.attachments, ...processedAttachments];
-    item.updatedAt = new Date().toISOString();
+
+    // Log this upload batch for auditing purposes: proves exactly what was received
+    // and when, so a client's later claim of "I already sent you X" can be verified
+    // against a timestamped record instead of being taken as an implicit commitment.
+    if (!Array.isArray(item.attachmentLog)) item.attachmentLog = [];
+    const nowIso = new Date().toISOString();
+    item.attachmentLog.push({
+      uploadedAt: nowIso,
+      fileNames: processedAttachments.map((f: any) => f.name),
+      uploadedBy: isAuthorizedAdmin ? 'admin' : 'client'
+    });
+    item.updatedAt = nowIso;
 
     cases[caseIndex] = item;
     await fs.writeFile(DB_FILE, JSON.stringify(cases, null, 2), 'utf-8');

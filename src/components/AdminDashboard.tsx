@@ -1419,6 +1419,31 @@ REPORTE GENERADO AUTOMÁTICAMENTE PARA REVISIÓN DEL LIC. EDGAR.
                         </div>
                       )}
 
+                      {/* Attachment Log / Evidence Receipt Audit Trail */}
+                      {selectedCase.attachmentLog && selectedCase.attachmentLog.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <Upload className="w-3.5 h-3.5 text-slate-400" /> Bitácora de Envío de Documentos
+                          </h4>
+                          <p className="text-[10px] text-slate-400 mb-2">
+                            Registro exacto de cada envío de documentos, con fecha/hora, útil como evidencia frente a reclamos de "ya envié la documentación".
+                          </p>
+                          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
+                            {selectedCase.attachmentLog.slice().reverse().map((entry, idx) => (
+                              <div key={idx} className="text-xs border-b border-slate-200/70 last:border-0 pb-2 last:pb-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className={`font-semibold ${entry.uploadedBy === 'admin' ? 'text-indigo-700' : 'text-emerald-700'}`}>
+                                    {entry.uploadedBy === 'admin' ? 'Subido por el despacho' : 'Enviado por el cliente'}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 font-mono">{new Date(entry.uploadedAt).toLocaleString('es-MX')}</span>
+                                </div>
+                                <p className="text-[10px] text-slate-500 truncate mt-0.5">{entry.fileNames.join(', ')}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Copied WhatsApp evidence */}
                       {selectedCase.pastedEvidence && (
                         <div>
