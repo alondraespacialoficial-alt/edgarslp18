@@ -112,4 +112,6 @@ export interface Case {
 
   // Private 4-to-5 digit access pin for client status checks
   accessPin?: string;
+  clientAccessBlocked?: boolean;
+  clientAccessBlockedMessage?: string;
 }

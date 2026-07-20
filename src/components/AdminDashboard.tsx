@@ -35,6 +35,7 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
   const [editLawyerNotes, setEditLawyerNotes] = useState('');
   const [editStrategy, setEditStrategy] = useState('');
   const [editResponseDraft, setEditResponseDraft] = useState('');
+  const [editAccessBlocked, setEditAccessBlocked] = useState(false);
   const [isSavingCase, setIsSavingCase] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [caseToDelete, setCaseToDelete] = useState<Case | null>(null);
@@ -263,6 +264,7 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
       setEditLawyerNotes(selectedCase.lawyerNotes || '');
       setEditStrategy(selectedCase.customStrategy || selectedCase.aiAnalysis?.suggestedStrategy || '');
       setEditResponseDraft(selectedCase.customResponseDraft || selectedCase.aiAnalysis?.suggestedResponseDraft || '');
+      setEditAccessBlocked(selectedCase.clientAccessBlocked || false);
       setChatHistory(selectedCase.chatHistory || []);
       setShowCasePin(false);
       setPinCopied(false);
@@ -313,7 +315,8 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
           status: editStatus,
           lawyerNotes: editLawyerNotes,
           customStrategy: editStrategy,
-          customResponseDraft: editResponseDraft
+          customResponseDraft: editResponseDraft,
+          clientAccessBlocked: editAccessBlocked
         })
       });
 
@@ -1186,6 +1189,11 @@ REPORTE GENERADO AUTOMÁTICAMENTE PARA REVISIÓN DEL LIC. EDGAR.
                     <span className={`px-2 py-0.5 border text-[9px] font-bold rounded ${getRiskBadgeColor(selectedCase.aiAnalysis?.riskLevel || 'Medio')}`}>
                       RIESGO {selectedCase.aiAnalysis?.riskLevel?.toUpperCase() || 'MEDIO'}
                     </span>
+                    {selectedCase.clientAccessBlocked && (
+                      <span className="px-2 py-0.5 border text-[9px] font-bold rounded bg-rose-50 text-rose-700 border-rose-200">
+                        ACCESO BLOQUEADO
+                      </span>
+                    )}
                     <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-800 text-[9px] font-bold rounded" title="Clave de acceso privada del cliente para consultar este expediente">
                       <Lock className="w-2.5 h-2.5" />
                       PIN: <span className="font-mono tracking-widest">{showCasePin ? (selectedCase.accessPin || '----') : '••••'}</span>
@@ -1261,6 +1269,19 @@ REPORTE GENERADO AUTOMÁTICAMENTE PARA REVISIÓN DEL LIC. EDGAR.
                     <option value="Resuelto">Estatus: Resuelto</option>
                     <option value="Cancelado">Estatus: Cancelado</option>
                   </select>
+                  <button
+                    type="button"
+                    onClick={() => setEditAccessBlocked(v => !v)}
+                    className={`flex items-center gap-1 px-2.5 py-1 border text-[10px] font-bold rounded-md transition-all shadow-xs cursor-pointer ${
+                      editAccessBlocked
+                        ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                    }`}
+                    title="Bloquea o restablece el acceso del cliente a su expediente"
+                  >
+                    <ShieldAlert className="w-3 h-3" />
+                    {editAccessBlocked ? 'Acceso bloqueado' : 'Acceso activo'}
+                  </button>
                   <div className="flex gap-1.5 relative">
                     <button
                       onClick={() => setCaseToDelete(selectedCase)}

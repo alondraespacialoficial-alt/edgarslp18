@@ -12,6 +12,7 @@ import { readAttachmentFile, parseApiErrorMessage } from '../utils/fileUpload';
 export default function ClientPortal() {
   const [activeTab, setActiveTab] = useState<'submit' | 'status'>('submit');
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+  const blockedAccessMessage = 'Contacte al administrador para habilitar el acceso a su expediente.';
 
   useEffect(() => {
     fetch('/api/settings/hero-image')
@@ -76,6 +77,10 @@ export default function ClientPortal() {
 
   const handleUploadExtraAttachments = async () => {
     if (extraAttachments.length === 0 || !searchedCase) return;
+    if (searchedCase.clientAccessBlocked) {
+      alert(searchedCase.clientAccessBlockedMessage || blockedAccessMessage);
+      return;
+    }
     setIsUploadingExtra(true);
     try {
       const response = await fetch(`/api/cases/${searchedCase.folio}/attachments`, {
@@ -244,6 +249,10 @@ export default function ClientPortal() {
   const handleClarificationReply = async (reqId: string) => {
     const answer = replyTexts[reqId];
     if (!answer || !answer.trim() || !searchedCase) return;
+    if (searchedCase.clientAccessBlocked) {
+      alert(searchedCase.clientAccessBlockedMessage || blockedAccessMessage);
+      return;
+    }
 
     setSubmittingReplyId(reqId);
     try {
@@ -872,6 +881,37 @@ export default function ClientPortal() {
             </div>
 
             {searchedCase && (
+              searchedCase.clientAccessBlocked ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white border border-rose-200 rounded-2xl shadow-sm overflow-hidden"
+                >
+                  <div className="bg-rose-50 border-b border-rose-100 p-6 text-left">
+                    <span className="text-[10px] text-rose-500 font-bold font-mono tracking-wider">ACCESO RESTRINGIDO</span>
+                    <h2 className="font-display text-xl font-bold text-rose-900 mt-1">Consulta suspendida temporalmente</h2>
+                    <p className="text-sm text-rose-800 mt-2 leading-relaxed">
+                      {searchedCase.clientAccessBlockedMessage || blockedAccessMessage}
+                    </p>
+                  </div>
+                  <div className="p-6 space-y-4 text-left">
+                    <div className="rounded-xl border border-rose-100 bg-rose-50/70 p-4 text-sm text-rose-800">
+                      <p className="font-semibold">Folio: {searchedCase.folio}</p>
+                      <p className="mt-1 text-xs leading-relaxed">
+                        Para reactivar el acceso, contacta al administrador del sistema y solicita la liberación del expediente.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Cerrar sesión
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
               <motion.div
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -1201,7 +1241,7 @@ export default function ClientPortal() {
                   )}
                 </div>
               </motion.div>
-            )}
+            ))}
           </motion.div>
         )}
       </AnimatePresence>

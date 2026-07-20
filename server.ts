@@ -180,7 +180,9 @@ async function syncCasesToSupabase(localCases: any[]): Promise<{ ok: boolean; er
         custom_response_draft: c.customResponseDraft || '',
         clarification_requests: c.clarificationRequests || [],
         chat_history: c.chatHistory || [],
-        access_pin: c.accessPin || '1234'
+        access_pin: c.accessPin || '1234',
+        client_access_blocked: c.clientAccessBlocked || false,
+        client_access_blocked_message: c.clientAccessBlockedMessage || ''
       };
     });
 
@@ -244,6 +246,8 @@ async function fetchCasesFromSupabase(): Promise<any[] | null> {
           clarificationRequests: c.clarification_requests || c.clarificationRequests || [],
           chatHistory: c.chat_history || c.chatHistory || [],
           accessPin: c.access_pin || c.accessPin || '1234',
+          clientAccessBlocked: c.client_access_blocked || c.clientAccessBlocked || false,
+          clientAccessBlockedMessage: c.client_access_blocked_message || c.clientAccessBlockedMessage || '',
           isDeleted: ai.isDeleted || false,
           deletedAt: ai.deletedAt || null,
           updatedAt: ai.updatedAt || c.created_at || c.createdAt,
@@ -478,10 +482,14 @@ CREATE TABLE IF NOT EXISTS cases (
   custom_response_draft TEXT DEFAULT '',
   clarification_requests JSONB DEFAULT '[]'::jsonb,
   chat_history JSONB DEFAULT '[]'::jsonb,
-  access_pin TEXT NOT NULL DEFAULT '1234'
+  access_pin TEXT NOT NULL DEFAULT '1234',
+  client_access_blocked BOOLEAN NOT NULL DEFAULT false,
+  client_access_blocked_message TEXT DEFAULT ''
 );
 
 -- 2. DESACTIVAR POLÍTICAS RLS (Para desarrollo rápido y pruebas sin bloqueos):
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS client_access_blocked BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS client_access_blocked_message TEXT DEFAULT '';
 ALTER TABLE cases DISABLE ROW LEVEL SECURITY;`
   });
 });
@@ -662,6 +670,16 @@ app.get('/api/cases/:folio', async (req, res) => {
       return res.status(401).json({ error: 'No autorizado. La clave de acceso del expediente es incorrecta o no fue proporcionada.' });
     }
 
+    if (!isAuthorizedAdmin && caseItem.clientAccessBlocked) {
+      clearPinAttempts(folioKey);
+      return res.json({
+        folio: caseItem.folio,
+        clientName: caseItem.clientName,
+        clientAccessBlocked: true,
+        clientAccessBlockedMessage: caseItem.clientAccessBlockedMessage || 'Contacte al administrador para habilitar el acceso a su expediente.'
+      });
+    }
+
     if (!isAuthorizedAdmin) clearPinAttempts(folioKey);
 
     res.json(caseItem);
@@ -777,7 +795,9 @@ app.post('/api/cases', async (req, res) => {
         : [],
       clarificationRequests: [],
       chatHistory: [],
-      accessPin
+      accessPin,
+      clientAccessBlocked: false,
+      clientAccessBlockedMessage: ''
     };
 
     // Analyze case details using Gemini 3.5 Flash server-side
@@ -1034,7 +1054,7 @@ app.post('/api/cases', async (req, res) => {
 // POST /api/cases/:folio/update - Update case details (status, notes, custom drafts)
 app.post('/api/cases/:folio/update', adminAuth, async (req, res) => {
   try {
-    const { status, lawyerNotes, customStrategy, customResponseDraft } = req.body;
+    const { status, lawyerNotes, customStrategy, customResponseDraft, clientAccessBlocked } = req.body;
     await ensureDatabase();
     const data = await fs.readFile(DB_FILE, 'utf-8');
     const cases = JSON.parse(data);
@@ -1050,6 +1070,12 @@ app.post('/api/cases/:folio/update', adminAuth, async (req, res) => {
     if (lawyerNotes !== undefined) item.lawyerNotes = lawyerNotes;
     if (customStrategy !== undefined) item.customStrategy = customStrategy;
     if (customResponseDraft !== undefined) item.customResponseDraft = customResponseDraft;
+    if (clientAccessBlocked !== undefined) item.clientAccessBlocked = Boolean(clientAccessBlocked);
+    if (item.clientAccessBlocked) {
+      item.clientAccessBlockedMessage = item.clientAccessBlockedMessage || 'Contacte al administrador para habilitar el acceso a su expediente.';
+    } else {
+      item.clientAccessBlockedMessage = '';
+    }
 
     const nowIso = new Date().toISOString();
     if (status && status !== previousStatus) {
@@ -1200,6 +1226,11 @@ app.post('/api/cases/:folio/attachments', async (req, res) => {
       return res.status(401).json({ error: 'No autorizado. La clave de acceso del expediente es incorrecta o no fue proporcionada.' });
     }
 
+    if (!isAuthorizedAdmin && item.clientAccessBlocked) {
+      clearPinAttempts(folioKey);
+      return res.status(403).json({ error: item.clientAccessBlockedMessage || 'Contacte al administrador para habilitar el acceso a su expediente.' });
+    }
+
     if (!isAuthorizedAdmin) clearPinAttempts(folioKey);
 
     if (!item.attachments) item.attachments = [];
@@ -1335,6 +1366,11 @@ app.post('/api/cases/:folio/clarification', async (req, res) => {
     if (!isAuthorizedAdmin && !isAuthorizedClient) {
       registerFailedPinAttempt(folioKey);
       return res.status(401).json({ error: 'No autorizado. La clave de acceso del expediente es incorrecta o no fue proporcionada.' });
+    }
+
+    if (!isAuthorizedAdmin && item.clientAccessBlocked) {
+      clearPinAttempts(folioKey);
+      return res.status(403).json({ error: item.clientAccessBlockedMessage || 'Contacte al administrador para habilitar el acceso a su expediente.' });
     }
 
     if (!isAuthorizedAdmin) clearPinAttempts(folioKey);
