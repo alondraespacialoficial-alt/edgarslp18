@@ -36,6 +36,7 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
   const [editStrategy, setEditStrategy] = useState('');
   const [editResponseDraft, setEditResponseDraft] = useState('');
   const [editAccessBlocked, setEditAccessBlocked] = useState(false);
+  const [editAccessBlockedMessage, setEditAccessBlockedMessage] = useState('');
   const [isSavingCase, setIsSavingCase] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [caseToDelete, setCaseToDelete] = useState<Case | null>(null);
@@ -265,6 +266,7 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
       setEditStrategy(selectedCase.customStrategy || selectedCase.aiAnalysis?.suggestedStrategy || '');
       setEditResponseDraft(selectedCase.customResponseDraft || selectedCase.aiAnalysis?.suggestedResponseDraft || '');
       setEditAccessBlocked(selectedCase.clientAccessBlocked || false);
+      setEditAccessBlockedMessage(selectedCase.clientAccessBlockedMessage || '');
       setChatHistory(selectedCase.chatHistory || []);
       setShowCasePin(false);
       setPinCopied(false);
@@ -316,7 +318,10 @@ export default function AdminDashboard({ adminPassword = '2003' }: AdminDashboar
           lawyerNotes: editLawyerNotes,
           customStrategy: editStrategy,
           customResponseDraft: editResponseDraft,
-          clientAccessBlocked: editAccessBlocked
+          clientAccessBlocked: editAccessBlocked,
+          clientAccessBlockedMessage: editAccessBlocked
+            ? (editAccessBlockedMessage.trim() || 'Contacte al administrador para habilitar el acceso a su expediente.')
+            : ''
         })
       });
 
@@ -1132,6 +1137,11 @@ REPORTE GENERADO AUTOMÁTICAMENTE PARA REVISIÓN DEL LIC. EDGAR.
                         <span className="text-[9px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-medium border border-indigo-100">
                           {item.aiAnalysis?.conflictType || 'Por clasificar'}
                         </span>
+                        {item.clientAccessBlocked && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-bold border bg-rose-50 text-rose-700 border-rose-200">
+                            Bloqueado
+                          </span>
+                        )}
                       </div>
                       {getStatusBadge(item.status)}
                     </div>
@@ -1282,6 +1292,15 @@ REPORTE GENERADO AUTOMÁTICAMENTE PARA REVISIÓN DEL LIC. EDGAR.
                     <ShieldAlert className="w-3 h-3" />
                     {editAccessBlocked ? 'Acceso bloqueado' : 'Acceso activo'}
                   </button>
+                  {editAccessBlocked && (
+                    <textarea
+                      value={editAccessBlockedMessage}
+                      onChange={e => setEditAccessBlockedMessage(e.target.value)}
+                      placeholder="Motivo para el cliente, por ejemplo: Contacte al administrador para habilitar el acceso a su expediente."
+                      rows={2}
+                      className="w-56 text-[10px] px-2.5 py-2 bg-white border border-rose-200 rounded-md text-slate-700 outline-none focus:border-rose-500 resize-none"
+                    />
+                  )}
                   <div className="flex gap-1.5 relative">
                     <button
                       onClick={() => setCaseToDelete(selectedCase)}

@@ -1054,7 +1054,7 @@ app.post('/api/cases', async (req, res) => {
 // POST /api/cases/:folio/update - Update case details (status, notes, custom drafts)
 app.post('/api/cases/:folio/update', adminAuth, async (req, res) => {
   try {
-    const { status, lawyerNotes, customStrategy, customResponseDraft, clientAccessBlocked } = req.body;
+    const { status, lawyerNotes, customStrategy, customResponseDraft, clientAccessBlocked, clientAccessBlockedMessage } = req.body;
     await ensureDatabase();
     const data = await fs.readFile(DB_FILE, 'utf-8');
     const cases = JSON.parse(data);
@@ -1072,6 +1072,9 @@ app.post('/api/cases/:folio/update', adminAuth, async (req, res) => {
     if (customResponseDraft !== undefined) item.customResponseDraft = customResponseDraft;
     if (clientAccessBlocked !== undefined) item.clientAccessBlocked = Boolean(clientAccessBlocked);
     if (item.clientAccessBlocked) {
+      if (clientAccessBlockedMessage !== undefined) {
+        item.clientAccessBlockedMessage = clientAccessBlockedMessage;
+      }
       item.clientAccessBlockedMessage = item.clientAccessBlockedMessage || 'Contacte al administrador para habilitar el acceso a su expediente.';
     } else {
       item.clientAccessBlockedMessage = '';
